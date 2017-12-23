@@ -12,6 +12,11 @@ namespace any
 
 		using _1 = placeholder;
 
+		struct destroy
+		{
+			using signature_t = void(placeholder&);
+		};
+
 		struct copy
 		{
 			using signature_t = void(placeholder const&, char*);
@@ -35,47 +40,27 @@ namespace any
 		};
 
 		/// function table for custom interfaces
+		/**
+			\note `iface::destroy` is always part of the interface
+		*/
 		template<typename... Interfaces>
-		struct extra_fn_table: table_entry<Interfaces>...
+		struct fn_table : table_entry<Interfaces>...
 		{
-			extra_fn_table(typename dispatch<Interfaces>::function_t... fn_ptrs)
+			fn_table(typename dispatch<Interfaces>::function_t... fn_ptrs)
 				: table_entry<Interfaces>{fn_ptrs}...
 			{ }
 		};
 
-		/// fuction table
-		template<typename... Interfaces>
-		struct fn_table
-		{
-			using destroy_fn = void (*)(char*);
-
-			fn_table(destroy_fn destroy_fn_ptr, typename dispatch<Interfaces>::function_t... fn_ptrs)
-				: destroy(destroy_fn_ptr), interfaces(fn_ptrs...)
-			{ }
-
-			/// destroy function
-			/**
-				\note destroy is explicitly implemented as first member to be able
-				      to do type comparison based on the adress stored here
-			*/
-			destroy_fn destroy;
-
-			/// custom interfaces
-			extra_fn_table<Interfaces...> interfaces;
-		};
-
 		template<typename T, typename... Interfaces>
-		void destroy(char* data);
-
-		template<typename T, typename... Interfaces>
-		fn_table<Interfaces...> const function_table(&destroy<T, Interfaces...>, dispatch<Interfaces>::template invoke<T, Interfaces...>...);
+		fn_table<iface::destroy, Interfaces...> const*
+		function_table();
 
 		template<typename T, typename... Interfaces>
 		struct model
 		{
 			template<typename... Args>
 			model(Args&&... args)
-				: table(&function_table<T, Interfaces...>)
+				: table(function_table<T, Interfaces...>())
 				, object(std::forward<Args>(args)...)
 			{ }
 
@@ -84,7 +69,7 @@ namespace any
 			model(model&&) = default;
 			model& operator= (model&&) = default;
 
-			fn_table<Interfaces...> const* const table;
+			fn_table<iface::destroy, Interfaces...> const* const table;
 			T object;
 		};
 
@@ -116,6 +101,19 @@ namespace any
 			static Return invoke(char const* data, Params... params)
 			{
 				return Interface::template invoke<T>(reinterpret_cast<model<T, Interfaces...> const*>(data)->object, std::forward<Params>(params)...);
+			}
+		};
+
+		/// interface function dispatcher for `iface::destroy`
+		template<>
+		struct dispatch_impl<iface::destroy, void(iface::placeholder&)>
+		{
+			using function_t = void(*)(char*);
+
+			template<typename T, typename... Interfaces>
+			static void invoke(char* data)
+			{
+				reinterpret_cast<model<T, Interfaces...>*>(data)->~model<T, Interfaces...>();
 			}
 		};
 
@@ -151,20 +149,25 @@ namespace any
 		{ };
 
 		template<typename T, typename... Interfaces>
-		void destroy(char* data)
+		fn_table<iface::destroy, Interfaces...> const function_table_impl(dispatch<iface::destroy>::invoke<T, Interfaces...>, dispatch<Interfaces>::template invoke<T, Interfaces...>...);
+
+		template<typename T, typename... Interfaces>
+		fn_table<iface::destroy, Interfaces...> const*
+		function_table()
 		{
-			reinterpret_cast<model<T, Interfaces...>*>(data)->~model<T, Interfaces...>();
+			return &function_table_impl<T, Interfaces...>;
 		}
 
-		std::uintptr_t typeid_by_data(char* any_data)
+		template<typename Ptr>
+		std::uintptr_t typeid_by_vtable(Ptr* vtable_ptr)
 		{
-			return *reinterpret_cast<uintptr_t*>(*reinterpret_cast<std::uintptr_t*>(any_data));
+			return reinterpret_cast<std::uintptr_t>(vtable_ptr);
 		}
 
 		template<typename T, typename... Interfaces>
 		std::uintptr_t typeid_by_type()
 		{
-			return reinterpret_cast<std::uintptr_t>(&destroy<T, Interfaces...>);
+			return reinterpret_cast<std::uintptr_t>(function_table<T, Interfaces...>());
 		}
 
 	} // namespace detail
@@ -192,6 +195,7 @@ namespace any
 			typename = std::enable_if_t<!std::is_same<std::remove_reference_t<std::remove_cv_t<T>>, base_any<Size, Alignment, Interfaces...>>::value>
 		>
 		base_any(T&& object)
+			: vtable(detail::function_table<std::decay_t<T>, Interfaces...>())
 		{
 			static_assert(sizeof(detail::model<std::decay_t<T>>) <= size, "given object does not fit into this any");
 			static_assert(alignof(detail::model<std::decay_t<T>>) <= alignment, "given object requires a greater alignment");
@@ -199,94 +203,92 @@ namespace any
 		}
 
 		base_any(base_any const& other)
+			: vtable(other.vtable)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::extra_fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
 				"this any has no interface for copy construction");
 
 			assert(this != &other && "ill formed initialization");
-			interface<iface::copy>(other.data).function(other.data, data);
+			other.interface<iface::copy>().function(other.data, data);
 		}
 
 		base_any(base_any&& other)
+			: vtable(other.vtable)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::extra_fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value,
 				"this any has no interface for move construction");
 
 			assert(this != &other && "ill formed initialization");
-			interface<iface::move>(other.data).function(other.data, data);
+			other.interface<iface::move>().function(other.data, data);
 		}
 
 		base_any& operator= (base_any const& other)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::extra_fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
 				"this any has no interface for copy construction");
 
 			if(this == &other)
 				return *this;
 
 			destroy();
-			interface<iface::copy>(other.data).function(other.data, data);
+			other.interface<iface::copy>().function(other.data, data);
+			vtable = other.vtable;
 			return *this;
 		}
 
 		base_any& operator= (base_any&& other)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::extra_fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value,
 				"this any has no interface for move construction");
 
 			if(this == &other)
 				return *this;
 
 			destroy();
-			interface<iface::move>(other.data).function(other.data, data);
+			other.interface<iface::move>().function(other.data, data);
+			vtable = other.vtable;
 			return *this;
 		}
 
 		template<typename Interface, typename... Args>
 		auto call(Args&&... args)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::extra_fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
 				"this any does not support given interface");
 
-			return interface<Interface>(data).function(data, std::forward<Args>(args)...);
+			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
 
 		template<typename Interface, typename... Args>
 		auto call(Args&&... args) const
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::extra_fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
 				"this any does not support given interface");
 
-			return interface<Interface>(data).function(data, std::forward<Args>(args)...);
+			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
 
 	private:
 		template<typename Interface>
-		static auto interface(char const* data)
-			-> detail::table_entry<Interface> const&
+		auto interface() const
 		{
-			return static_cast<detail::table_entry<Interface> const&>(reinterpret_cast<detail::fn_table<Interfaces...> const*>(*reinterpret_cast<std::uintptr_t const*>(data))->interfaces);
+			return *static_cast<detail::table_entry<Interface> const*>(vtable);
 		}
 
 		void destroy()
 		{
-			auto* table = reinterpret_cast<detail::fn_table<Interfaces...> const*>(*reinterpret_cast<std::uintptr_t const*>(data));
-			if(table)
-				table->destroy(data);
+			interface<iface::destroy>().function(data);
 		}
 
 	private:
-		template<typename T> friend T* any_cast(base_any&);
-		template<typename T> friend T const* any_cast(base_any const&);
-
-	private:
 		char data[size];
+		detail::fn_table<iface::destroy, Interfaces...> const* vtable;
 	};
 
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...>& a)
 	{
-		return detail::typeid_by_data(a.data) == detail::typeid_by_type<T, Interfaces...>();
+		return detail::typeid_by_vtable(a.vtable) == detail::typeid_by_type<T, Interfaces...>();
 	}
 
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>

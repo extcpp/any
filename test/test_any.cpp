@@ -6,7 +6,7 @@
 BOOST_AUTO_TEST_CASE(test_any_int)
 {
 	any::any<16, 8> a = 42;
-	BOOST_TEST(any::valid_cast<int>(a));
+	BOOST_TEST(any::valid_cast<int>(a) == true);
 	auto result = any::any_cast<int>(a);
 	BOOST_TEST(result == 42);
 }
