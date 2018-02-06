@@ -48,77 +48,35 @@ namespace any
 
 	namespace detail
 	{
-		template<typename Interface>
-		struct dispatch;
-
-		template<typename Interface>
-		struct table_entry
-		{
-			typename dispatch<Interface>::function_t function;
-		};
-
-		/// function table for custom interfaces
-		/**
-			\note `iface::destroy` is always part of the interface
-		*/
-		template<typename... Interfaces>
-		struct fn_table : table_entry<Interfaces>...
-		{
-			fn_table(typename dispatch<Interfaces>::function_t... fn_ptrs)
-				: table_entry<Interfaces>{fn_ptrs}...
-			{ }
-		};
-
-		template<typename T, typename... Interfaces>
-		fn_table<iface::destroy, Interfaces...> const*
-		function_table();
-
-		template<typename T, typename... Interfaces>
-		struct model
-		{
-			template<typename... Args>
-			model(Args&&... args)
-				: table(function_table<T, Interfaces...>())
-				, object(std::forward<Args>(args)...)
-			{ }
-
-			model(model const&) = default;
-			model& operator= (model const&) = default;
-			model(model&&) = default;
-			model& operator= (model&&) = default;
-
-			fn_table<iface::destroy, Interfaces...> const* const table;
-			T object;
-		};
-
+		/// interface function dispatcher
 		template<typename Interface, typename Signature>
 		struct dispatch_impl;
 
-		/// interface function dispatcher (helper)
+		/// interface function dispatcher for non-const objects
 		template<typename Interface, typename Return, typename... Params>
 		struct dispatch_impl<Interface, Return(iface::placeholder&, Params...)>
 		{
 			using function_t = Return(*)(char*, Params...);
 
-			/// converts `data` into `model<T, Interfaces>` and calls the given interface function with its `object` member
+			/// converts `data` into `T` and calls the given interface function with its `object` member
 			template<typename T, typename... Interfaces>
 			static Return invoke(char* data, Params... params)
 			{
-				return Interface::template invoke<T>(reinterpret_cast<model<T, Interfaces...>*>(data)->object, std::forward<Params>(params)...);
+				return Interface::template invoke<T>(*reinterpret_cast<T*>(data), std::forward<Params>(params)...);
 			}
 		};
 
-		/// interface function dispatcher (helper)
+		/// interface function dispatcher for const objects
 		template<typename Interface, typename Return, typename... Params>
 		struct dispatch_impl<Interface, Return(iface::placeholder const&, Params...)>
 		{
 			using function_t = Return(*)(char const*, Params...);
 
-			/// converts `data` into `model<T,Interfaces> const*` and calls the given interface function with its `object` member
+			/// converts `data` into `T const*` and calls the given interface function with its `object` member
 			template<typename T, typename... Interfaces>
 			static Return invoke(char const* data, Params... params)
 			{
-				return Interface::template invoke<T>(reinterpret_cast<model<T, Interfaces...> const*>(data)->object, std::forward<Params>(params)...);
+				return Interface::template invoke<T>(*reinterpret_cast<T const*>(data), std::forward<Params>(params)...);
 			}
 		};
 
@@ -131,7 +89,7 @@ namespace any
 			template<typename T, typename... Interfaces>
 			static void invoke(char* data)
 			{
-				reinterpret_cast<model<T, Interfaces...>*>(data)->~model<T, Interfaces...>();
+				reinterpret_cast<T*>(data)->~T();
 			}
 		};
 
@@ -144,7 +102,7 @@ namespace any
 			template<typename T, typename... Interfaces>
 			static void invoke(char const* data, char* target)
 			{
-				new(target) detail::model<T, Interfaces...>(reinterpret_cast<model<T, Interfaces...> const*>(data)->object);
+				new(target) T(*reinterpret_cast<T const*>(data));
 			}
 		};
 
@@ -157,7 +115,7 @@ namespace any
 			template<typename T, typename... Interfaces>
 			static void invoke(char* data, char* target)
 			{
-				new(target) detail::model<T, Interfaces...>(std::move(reinterpret_cast<model<T, Interfaces...>*>(data)->object));
+				new(target) T(std::move(*reinterpret_cast<T*>(data)));
 			}
 		};
 
@@ -166,9 +124,27 @@ namespace any
 		struct dispatch : dispatch_impl<Interface, typename Interface::signature_t>
 		{ };
 
+		/// function table entry holding a function pointer for the given interface
+		template<typename Interface>
+		struct table_entry
+		{
+			typename dispatch<Interface>::function_t function;
+		};
+
+		/// function table for custom interfaces
+		template<typename... Interfaces>
+		struct fn_table : table_entry<Interfaces>...
+		{
+			fn_table(typename dispatch<Interfaces>::function_t... fn_ptrs)
+				: table_entry<Interfaces>{fn_ptrs}...
+			{ }
+		};
+
+		/// function table instance for given T and interfaces
 		template<typename T, typename... Interfaces>
 		fn_table<iface::destroy, Interfaces...> const function_table_impl(dispatch<iface::destroy>::invoke<T, Interfaces...>, dispatch<Interfaces>::template invoke<T, Interfaces...>...);
 
+		/// returns function table pointer for given T and interfaces
 		template<typename T, typename... Interfaces>
 		fn_table<iface::destroy, Interfaces...> const*
 		function_table()
@@ -176,12 +152,14 @@ namespace any
 			return &function_table_impl<T, Interfaces...>;
 		}
 
+		/// returns a unique integer, identifying the type and its interfaces associated with given vtable
 		template<typename Ptr>
 		std::uintptr_t typeid_by_vtable(Ptr* vtable_ptr)
 		{
 			return reinterpret_cast<std::uintptr_t>(vtable_ptr);
 		}
 
+		/// returns a unique integer for given type and its interfaces
 		template<typename T, typename... Interfaces>
 		std::uintptr_t typeid_by_type()
 		{
@@ -190,6 +168,11 @@ namespace any
 
 	} // namespace detail
 
+	/// any-object, which can carry any object satisfying all given interfaces
+	/**
+		\code{.cpp}
+		\endcode
+	*/
 	template<std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	class alignas(Alignment) base_any
 	{
@@ -215,16 +198,16 @@ namespace any
 		base_any(T&& object)
 			: vtable(detail::function_table<std::decay_t<T>, Interfaces...>())
 		{
-			static_assert(sizeof(detail::model<std::decay_t<T>>) <= size, "given object does not fit into this any");
-			static_assert(alignof(detail::model<std::decay_t<T>>) <= alignment, "given object requires a greater alignment");
-			new(data) detail::model<std::decay_t<T>, Interfaces...>(std::forward<T>(object));
+			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
+			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
+			new(data) std::decay_t<T>(std::forward<T>(object));
 		}
 
 		base_any(base_any const& other)
 			: vtable(other.vtable)
 		{
 			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
-				"this any has no interface for copy construction");
+				"this any-object has no interface for copy construction");
 
 			assert(this != &other && "ill formed initialization");
 			other.interface<iface::copy>().function(other.data, data);
@@ -234,7 +217,7 @@ namespace any
 			: vtable(other.vtable)
 		{
 			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value,
-				"this any has no interface for move construction");
+				"this any-object has no interface for move construction");
 
 			assert(this != &other && "ill formed initialization");
 			other.interface<iface::move>().function(other.data, data);
@@ -243,7 +226,7 @@ namespace any
 		base_any& operator= (base_any const& other)
 		{
 			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
-				"this any has no interface for copy construction");
+				"this any-object has no interface for copy construction");
 
 			if(this == &other)
 				return *this;
@@ -257,7 +240,7 @@ namespace any
 		base_any& operator= (base_any&& other)
 		{
 			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value,
-				"this any has no interface for move construction");
+				"this any-object has no interface for move construction");
 
 			if(this == &other)
 				return *this;
@@ -272,7 +255,7 @@ namespace any
 		auto call(Args&&... args)
 		{
 			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
-				"this any does not support given interface");
+				"this any-object does not support given interface");
 
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
@@ -281,7 +264,7 @@ namespace any
 		auto call(Args&&... args) const
 		{
 			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
-				"this any does not support given interface");
+				"this any-object does not support given interface");
 
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
@@ -312,8 +295,8 @@ namespace any
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	T& any_cast(base_any<Size, Alignment, Interfaces...>& a)
 	{
-		assert(valid_cast<T>(a) && "any_cast: any does not contain given type");
-		return reinterpret_cast<detail::model<T, Interfaces...>*>(a.data)->object;
+		assert(valid_cast<T>(a) && "any_cast: any-object does not contain given type");
+		return *reinterpret_cast<T*>(a.data);
 	}
 
 	template<std::size_t Size, std::size_t Alignment = 8>
