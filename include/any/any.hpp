@@ -12,21 +12,39 @@ namespace any
 
 		using _1 = placeholder;
 
+		/// destructor interface definition
+		/**
+			This interface definition is implicitly included in all any-objects.
+			\note This is a special interface and is therefor incomplete.
+			      See documentation for how to implement custom interfaces.
+		*/
 		struct destroy
 		{
 			using signature_t = void(placeholder&);
 		};
 
+		/// copy constructor interface definition
+		/**
+			Use this interface to require objects to be copy-constructable
+			\note This is a special interface and is therefor incomplete.
+			      See documentation for how to implement custom interfaces.
+		*/
 		struct copy
 		{
 			using signature_t = void(placeholder const&, char*);
 		};
 
+		/// move constructor interface definition
+		/**
+			Use this interface to require objects to be move-constructable
+			\note This is a special interface and is therefor incomplete.
+			      See documentation for how to implement custom interfaces.
+		*/
 		struct move
 		{
 			using signature_t = void(placeholder&, char*);
 		};
-	}
+	} // namespace iface
 
 	namespace detail
 	{
