@@ -4,6 +4,7 @@
 #include <typeinfo>
 #include <utility>
 #include <cstdint>
+#include <cassert>
 #include <type_traits>
 
 namespace any
@@ -287,7 +288,7 @@ namespace any
 		}
 
 		template<typename Interface, typename... Args>
-		auto call(Args&&... args)
+		decltype(auto) call(Args&&... args)
 		{
 			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
 				"this any-object does not support given interface");
@@ -296,7 +297,7 @@ namespace any
 		}
 
 		template<typename Interface, typename... Args>
-		auto call(Args&&... args) const
+		decltype(auto) call(Args&&... args) const
 		{
 			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
 				"this any-object does not support given interface");
@@ -306,8 +307,9 @@ namespace any
 
 	private:
 		template<typename Interface>
-		auto interface() const
+		decltype(auto) interface() const
 		{
+			assert(vtable != nullptr);
 			return *static_cast<detail::table_entry<Interface> const*>(vtable);
 		}
 
@@ -332,6 +334,18 @@ namespace any
 	{
 		assert(valid_cast<T>(a) && "any_cast: any-object does not contain given type");
 		return *reinterpret_cast<T*>(a.data);
+	}
+
+	template<typename Interface, std::size_t Size, std::size_t Alignment, typename... Interfaces, typename... Args>
+	decltype(auto) call(base_any<Size, Alignment, Interfaces...>& a, Args&&... args)
+	{
+		return a.template call<Interface>(std::forward<Args>(args)...);
+	}
+
+	template<typename Interface, std::size_t Size, std::size_t Alignment, typename... Interfaces, typename... Args>
+	decltype(auto) call(base_any<Size, Alignment, Interfaces...> const& a, Args&&... args)
+	{
+		return a.template call<Interface>(std::forward<Args>(args)...);
 	}
 
 	template<std::size_t Size, std::size_t Alignment = 8>

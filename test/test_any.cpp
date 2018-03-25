@@ -136,6 +136,9 @@ BOOST_AUTO_TEST_CASE(test_any_custom_interface)
 	a = 41.5f;
 	result = a.call<myinterface>(0.5);
 	BOOST_TEST(result == 42.0);
+
+	result = any::call<myinterface>(a, 8.5);
+	BOOST_TEST(result == 50.0);
 }
 
 BOOST_AUTO_TEST_CASE(test_const_any_custom_interface)
@@ -145,4 +148,7 @@ BOOST_AUTO_TEST_CASE(test_const_any_custom_interface)
 	const any_t a1 = 42;
 	auto result = a1.call<myinterface>(0.5);
 	BOOST_TEST(result == 42.5);
+
+	result = any::call<myinterface>(a1, 8.0);
+	BOOST_TEST(result == 50.0);
 }
