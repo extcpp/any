@@ -2,6 +2,9 @@
 #define INCLGUARD_any_hpp
 
 #include <typeinfo>
+#include <utility>
+#include <cstdint>
+#include <type_traits>
 
 namespace any
 {
@@ -46,8 +49,23 @@ namespace any
 		};
 	} // namespace iface
 
+	// forward declaration
+	template<std::size_t Size, std::size_t Alignment, typename... Interfaces> class base_any;
+
 	namespace detail
 	{
+		template<typename>
+		struct is_any
+		{
+			constexpr static bool value = false;
+		};
+
+		template<std::size_t Size, std::size_t Alignment, typename... Interfaces>
+		struct is_any<base_any<Size, Alignment, Interfaces...>>
+		{
+			constexpr static bool value = true;
+		};
+
 		/// interface function dispatcher
 		template<typename Interface, typename Signature>
 		struct dispatch_impl;
@@ -197,7 +215,7 @@ namespace any
 
 		template<
 			typename T,
-			typename = std::enable_if_t<!std::is_same<std::remove_reference_t<std::remove_cv_t<T>>, base_any<Size, Alignment, Interfaces...>>::value>
+			typename = std::enable_if_t<!detail::is_any<std::decay_t<T>>::value>
 		>
 		base_any(T&& object)
 			: vtable(detail::function_table<std::decay_t<T>, Interfaces...>())
@@ -205,6 +223,19 @@ namespace any
 			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
 			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
 			new(data) std::decay_t<T>(std::forward<T>(object));
+		}
+
+		template<
+			typename T,
+			typename = std::enable_if_t<!detail::is_any<std::decay_t<T>>::value>
+		>
+		base_any& operator=(T&& object)
+		{
+			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
+			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
+			vtable = detail::function_table<std::decay_t<T>, Interfaces...>();
+			new(data) std::decay_t<T>(std::forward<T>(object));
+			return *this;
 		}
 
 		base_any(base_any const& other)

@@ -3,6 +3,12 @@
 #include <boost/test/unit_test.hpp>
 #include "any/any.hpp"
 
+BOOST_AUTO_TEST_CASE(test_is_any)
+{
+	static_assert(!any::detail::is_any<int>::value);
+	static_assert( any::detail::is_any<any::base_any<16, 8>>::value);
+}
+
 BOOST_AUTO_TEST_CASE(test_any_int)
 {
 	any::any<16, 8> a = 42;
