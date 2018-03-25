@@ -191,6 +191,10 @@ namespace any
 			destroy();
 		}
 
+		base_any()
+			: vtable(nullptr)
+		{ }
+
 		template<
 			typename T,
 			typename = std::enable_if_t<!std::is_same<std::remove_reference_t<std::remove_cv_t<T>>, base_any<Size, Alignment, Interfaces...>>::value>
