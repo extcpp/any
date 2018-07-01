@@ -315,6 +315,17 @@ namespace any
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
 
+		bool has_value() const
+		{
+			return vtable != nullptr;
+		}
+
+		void reset()
+		{
+			destroy();
+			vtable = nullptr;
+		}
+
 	private:
 		template<typename Interface>
 		decltype(auto) interface() const
