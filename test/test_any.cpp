@@ -115,6 +115,122 @@ BOOST_AUTO_TEST_CASE(test_any_copy_move)
 
 }
 
+BOOST_AUTO_TEST_CASE(test_any_without_move)
+{
+	using any_t = any::base_any<16, 8, any::iface::copy>;
+	{
+		dummy d{};
+		any_t a1 = d;
+		dummy::copy        = 0;
+		dummy::copy_assign = 0;
+		dummy::move        = 0;
+		dummy::move_assign = 0;
+		dummy::dtor        = 0;
+		any_t a2 = a1;
+		BOOST_TEST(dummy::copy        == 1);
+		BOOST_TEST(dummy::copy_assign == 0);
+		BOOST_TEST(dummy::move        == 0);
+		BOOST_TEST(dummy::move_assign == 0);
+		BOOST_TEST(dummy::dtor        == 0);
+	}
+	BOOST_TEST(dummy::dtor == 3);
+
+	{
+		dummy d{};
+		any_t a1 = d;
+		any_t a2 = d;
+		dummy::copy        = 0;
+		dummy::copy_assign = 0;
+		dummy::move        = 0;
+		dummy::move_assign = 0;
+		dummy::dtor        = 0;
+		a1 = a2;
+		BOOST_TEST(dummy::copy        == 1);
+		BOOST_TEST(dummy::copy_assign == 0);
+		BOOST_TEST(dummy::move        == 0);
+		BOOST_TEST(dummy::move_assign == 0);
+		BOOST_TEST(dummy::dtor        == 1);
+		dummy::dtor = 0;
+	}
+	BOOST_TEST(dummy::dtor == 3);
+
+	{
+		any_t a1 = dummy{};
+		dummy::copy        = 0;
+		dummy::copy_assign = 0;
+		dummy::move        = 0;
+		dummy::move_assign = 0;
+		dummy::dtor        = 0;
+		any_t a2 = std::move(a1);
+		BOOST_TEST(dummy::copy        == 1);
+		BOOST_TEST(dummy::copy_assign == 0);
+		BOOST_TEST(dummy::move        == 0);
+		BOOST_TEST(dummy::move_assign == 0);
+		BOOST_TEST(dummy::dtor        == 0);
+	}
+	BOOST_TEST(dummy::dtor == 2);
+
+	{
+		dummy d{};
+		any_t a1 = d;
+		any_t a2 = d;
+		dummy::copy        = 0;
+		dummy::copy_assign = 0;
+		dummy::move        = 0;
+		dummy::move_assign = 0;
+		dummy::dtor        = 0;
+		a1 = std::move(a2);
+		BOOST_TEST(dummy::copy        == 1);
+		BOOST_TEST(dummy::copy_assign == 0);
+		BOOST_TEST(dummy::move        == 0);
+		BOOST_TEST(dummy::move_assign == 0);
+		BOOST_TEST(dummy::dtor        == 1);
+		dummy::dtor = 0;
+	}
+	BOOST_TEST(dummy::dtor == 3);
+
+}
+
+BOOST_AUTO_TEST_CASE(test_any_without_copy)
+{
+	using any_t = any::base_any<16, 8, any::iface::move>;
+	{
+		any_t a1 = dummy{};
+		dummy::copy        = 0;
+		dummy::copy_assign = 0;
+		dummy::move        = 0;
+		dummy::move_assign = 0;
+		dummy::dtor        = 0;
+		any_t a2 = std::move(a1);
+		BOOST_TEST(dummy::copy        == 0);
+		BOOST_TEST(dummy::copy_assign == 0);
+		BOOST_TEST(dummy::move        == 1);
+		BOOST_TEST(dummy::move_assign == 0);
+		BOOST_TEST(dummy::dtor        == 0);
+	}
+	BOOST_TEST(dummy::dtor == 2);
+
+	{
+		dummy d{};
+		any_t a1 = d;
+		any_t a2 = d;
+		dummy::copy        = 0;
+		dummy::copy_assign = 0;
+		dummy::move        = 0;
+		dummy::move_assign = 0;
+		dummy::dtor        = 0;
+		a1 = std::move(a2);
+		BOOST_TEST(dummy::copy        == 0);
+		BOOST_TEST(dummy::copy_assign == 0);
+		BOOST_TEST(dummy::move        == 1);
+		BOOST_TEST(dummy::move_assign == 0);
+		BOOST_TEST(dummy::dtor        == 1);
+		dummy::dtor = 0;
+	}
+	BOOST_TEST(dummy::dtor == 3);
+
+}
+
 struct myinterface
 {
 	using signature_t = double(any::iface::placeholder const&, double);

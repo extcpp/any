@@ -252,11 +252,16 @@ namespace any
 		base_any(base_any&& other)
 			: vtable(other.vtable)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value,
-				"this any-object has no interface for move construction");
+			static_assert(
+				std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value
+				|| std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
+				"this any-object has neither an interface for move construction nor an interface for copy construction");
 
 			assert(this != &other && "ill formed initialization");
-			other.interface<iface::move>().function(other.data, data);
+			if constexpr(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value)
+				other.interface<iface::move>().function(other.data, data);
+			else if(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value)
+				other.interface<iface::copy>().function(other.data, data); // fall back to copy construction
 		}
 
 		base_any& operator= (base_any const& other)
@@ -275,14 +280,19 @@ namespace any
 
 		base_any& operator= (base_any&& other)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value,
-				"this any-object has no interface for move construction");
+			static_assert(
+				std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value
+				|| std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
+				"this any-object has neither an interface for move construction nor an interface for copy construction");
 
 			if(this == &other)
 				return *this;
 
 			destroy();
-			other.interface<iface::move>().function(other.data, data);
+			if constexpr(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value)
+				other.interface<iface::move>().function(other.data, data);
+			else if(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value)
+				other.interface<iface::copy>().function(other.data, data); // fall back to copy construction
 			vtable = other.vtable;
 			return *this;
 		}
