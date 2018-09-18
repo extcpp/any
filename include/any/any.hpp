@@ -203,6 +203,9 @@ namespace any
 		friend _T& any_cast(base_any<_Size, _Alignment, _Interfaces...>& a);
 
 		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
+		friend _T const& any_cast(base_any<_Size, _Alignment, _Interfaces...> const& a);
+
+		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
 		friend bool valid_cast(base_any<_Size, _Alignment, _Interfaces...>& a);
 
 		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
@@ -374,6 +377,18 @@ namespace any
 	{
 		assert(valid_cast<T>(a) && "any_cast: any-object does not contain given type");
 		return *reinterpret_cast<T*>(a.data);
+	}
+
+	/// returns a reference to the given type
+	/**
+		\note If the given any does not contain the given type, using the returned reference is undefined behavior
+		\see valid_cast
+	*/
+	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
+	T const& any_cast(base_any<Size, Alignment, Interfaces...> const& a)
+	{
+		assert(valid_cast<T>(a) && "any_cast: any-object does not contain given type");
+		return *reinterpret_cast<T const*>(a.data);
 	}
 
 	template<typename Interface, std::size_t Size, std::size_t Alignment, typename... Interfaces, typename... Args>
