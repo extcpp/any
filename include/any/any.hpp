@@ -331,7 +331,7 @@ namespace any
 		template<typename Interface>
 		decltype(auto) interface() const
 		{
-			assert(vtable != nullptr);
+			assert(has_value());
 			return *static_cast<detail::table_entry<Interface> const*>(vtable);
 		}
 
@@ -345,6 +345,13 @@ namespace any
 		char data[size];
 		detail::fn_table<iface::destroy, Interfaces...> const* vtable;
 	};
+
+	/// free-standing-function equivalent to base_any::has_value()
+	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
+	bool has_value(base_any<Size, Alignment, Interfaces...> const& a)
+	{
+		return a.has_value();
+	}
 
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...>& a)
