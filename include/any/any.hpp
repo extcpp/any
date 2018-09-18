@@ -336,7 +336,8 @@ namespace any
 
 		void destroy()
 		{
-			interface<iface::destroy>().function(data);
+			if(has_value())
+				interface<iface::destroy>().function(data);
 		}
 
 	private:
