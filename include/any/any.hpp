@@ -234,6 +234,7 @@ namespace any
 		{
 			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
 			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
+			destroy();
 			vtable = detail::function_table<std::decay_t<T>, Interfaces...>();
 			new(data) std::decay_t<T>(std::forward<T>(object));
 			return *this;
