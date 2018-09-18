@@ -205,6 +205,9 @@ namespace any
 		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
 		friend bool valid_cast(base_any<_Size, _Alignment, _Interfaces...>& a);
 
+		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
+		friend bool valid_cast(base_any<_Size, _Alignment, _Interfaces...> const& a);
+
 		~base_any()
 		{
 			destroy();
@@ -355,6 +358,13 @@ namespace any
 
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...>& a)
+	{
+		return detail::typeid_by_vtable(a.vtable) == detail::typeid_by_type<T, Interfaces...>();
+	}
+
+	/// returns true if the given cast is valid
+	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
+	bool valid_cast(base_any<Size, Alignment, Interfaces...> const& a)
 	{
 		return detail::typeid_by_vtable(a.vtable) == detail::typeid_by_type<T, Interfaces...>();
 	}
