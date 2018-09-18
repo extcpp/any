@@ -304,6 +304,7 @@ namespace any
 			return *this;
 		}
 
+		/// calls the given interface function of the inner object
 		template<typename Interface, typename... Args>
 		decltype(auto) call(Args&&... args)
 		{
@@ -313,6 +314,7 @@ namespace any
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
 
+		/// calls the given interface function of the inner object
 		template<typename Interface, typename... Args>
 		decltype(auto) call(Args&&... args) const
 		{
@@ -322,11 +324,13 @@ namespace any
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
 		}
 
+		/// returns true if this any contains a value, false otherwise
 		bool has_value() const
 		{
 			return vtable != nullptr;
 		}
 
+		/// destroys the inner object (has_value() returns false afterwards)
 		void reset()
 		{
 			destroy();
@@ -359,6 +363,7 @@ namespace any
 		return a.has_value();
 	}
 
+	/// returns true if the given cast is valid
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...>& a)
 	{
@@ -372,6 +377,11 @@ namespace any
 		return detail::typeid_by_vtable(a.vtable) == detail::typeid_by_type<T, Interfaces...>();
 	}
 
+	/// returns a reference to the given type
+	/**
+		\note If the given any does not contain the given type, using the returned reference is undefined behavior
+		\see valid_cast
+	*/
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	T& any_cast(base_any<Size, Alignment, Interfaces...>& a)
 	{
@@ -391,12 +401,22 @@ namespace any
 		return *reinterpret_cast<T const*>(a.data);
 	}
 
+	/// calls the given interface function of the any's inner object
+	/**
+		\note Calling this function on an empty any is undefined behavior
+		\see base_any::has_value
+	*/
 	template<typename Interface, std::size_t Size, std::size_t Alignment, typename... Interfaces, typename... Args>
 	decltype(auto) call(base_any<Size, Alignment, Interfaces...>& a, Args&&... args)
 	{
 		return a.template call<Interface>(std::forward<Args>(args)...);
 	}
 
+	/// calls the given interface function of the any's inner object
+	/**
+		\note Calling this function on an empty any is undefined behavior
+		\see base_any::has_value
+	*/
 	template<typename Interface, std::size_t Size, std::size_t Alignment, typename... Interfaces, typename... Args>
 	decltype(auto) call(base_any<Size, Alignment, Interfaces...> const& a, Args&&... args)
 	{
