@@ -11,10 +11,28 @@ BOOST_AUTO_TEST_CASE(test_is_any)
 
 BOOST_AUTO_TEST_CASE(test_any_int)
 {
-	any::any<16, 8> a = 42;
+	using any_t = any::any<16, 8>;
+
+	any_t a = 42;
 	BOOST_TEST(any::valid_cast<int>(a) == true);
-	auto result = any::any_cast<int>(a);
+
+	decltype(auto) result = any::any_cast<int>(a);
+	static_assert(std::is_same<decltype(result), int&>::value);
 	BOOST_TEST(result == 42);
+
+	result = 170;
+	BOOST_TEST(any::any_cast<int>(a) == 170);
+
+	any_t const& b = a;
+	BOOST_TEST(any::valid_cast<int>(b) == true);
+	BOOST_TEST(any::any_cast<int>(b) == 170);
+
+	decltype(auto) result2 = any::any_cast<int>(b);
+	static_assert(std::is_same<decltype(result2), int const&>::value);
+	BOOST_TEST(result2 == 170);
+
+	result = 682;
+	BOOST_TEST(result2 == 682);
 }
 
 struct dummy
