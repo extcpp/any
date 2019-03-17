@@ -286,3 +286,49 @@ BOOST_AUTO_TEST_CASE(test_const_any_custom_interface)
 	result = any::call<myinterface>(a1, 8.0);
 	BOOST_TEST(result == 50.0);
 }
+
+BOOST_AUTO_TEST_CASE(test_copy_ctr_empty)
+{
+	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+
+	any_t a;
+	any_t b(a);
+
+	BOOST_TEST(a.has_value() == false);
+	BOOST_TEST(b.has_value() == false);
+}
+
+BOOST_AUTO_TEST_CASE(test_copy_assign_empty)
+{
+	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+
+	any_t a;
+	any_t b;
+	b = a;
+
+	BOOST_TEST(a.has_value() == false);
+	BOOST_TEST(b.has_value() == false);
+}
+
+BOOST_AUTO_TEST_CASE(test_move_ctr_empty)
+{
+	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+
+	any_t a;
+	any_t b(std::move(a));
+
+	BOOST_TEST(a.has_value() == false);
+	BOOST_TEST(b.has_value() == false);
+}
+
+BOOST_AUTO_TEST_CASE(test_move_assign_empty)
+{
+	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+
+	any_t a;
+	any_t b;
+	b = std::move(a);
+
+	BOOST_TEST(a.has_value() == false);
+	BOOST_TEST(b.has_value() == false);
+}
