@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cassert>
 #include <type_traits>
+#include <new>
 
 namespace any
 {
