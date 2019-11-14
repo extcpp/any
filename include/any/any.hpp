@@ -81,7 +81,7 @@ namespace any
 			template<typename T, typename... Interfaces>
 			static Return invoke(char* data, Params... params)
 			{
-				return Interface::template invoke<T>(*reinterpret_cast<T*>(data), std::forward<Params>(params)...);
+				return Interface::template invoke(*reinterpret_cast<T*>(data), std::forward<Params>(params)...);
 			}
 		};
 
@@ -95,7 +95,7 @@ namespace any
 			template<typename T, typename... Interfaces>
 			static Return invoke(char const* data, Params... params)
 			{
-				return Interface::template invoke<T>(*reinterpret_cast<T const*>(data), std::forward<Params>(params)...);
+				return Interface::template invoke(*reinterpret_cast<T const*>(data), std::forward<Params>(params)...);
 			}
 		};
 
