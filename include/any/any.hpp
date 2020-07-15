@@ -19,7 +19,7 @@ namespace any
 		/// destructor interface definition
 		/**
 			This interface definition is implicitly included in all any-objects.
-			\note This is a special interface and is therefor incomplete.
+			\note This is a special interface and is therefore incomplete.
 			      See documentation for how to implement custom interfaces.
 		*/
 		struct destroy
@@ -30,7 +30,7 @@ namespace any
 		/// copy constructor interface definition
 		/**
 			Use this interface to require objects to be copy-constructable
-			\note This is a special interface and is therefor incomplete.
+			\note This is a special interface and is therefore incomplete.
 			      See documentation for how to implement custom interfaces.
 		*/
 		struct copy
@@ -41,7 +41,7 @@ namespace any
 		/// move constructor interface definition
 		/**
 			Use this interface to require objects to be move-constructable
-			\note This is a special interface and is therefor incomplete.
+			\note This is a special interface and is therefore incomplete.
 			      See documentation for how to implement custom interfaces.
 		*/
 		struct move
