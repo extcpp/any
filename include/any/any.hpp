@@ -367,7 +367,7 @@ namespace any
 	};
 
 	/// free-standing-function equivalent to base_any::has_value()
-	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
+	template<std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool has_value(base_any<Size, Alignment, Interfaces...> const& a)
 	{
 		return a.has_value();

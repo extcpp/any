@@ -287,6 +287,26 @@ BOOST_AUTO_TEST_CASE(test_const_any_custom_interface)
 	BOOST_TEST(result == 50.0);
 }
 
+BOOST_AUTO_TEST_CASE(test_has_value)
+{
+	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+
+	any_t a;
+
+	BOOST_TEST(a.has_value() == false);
+	BOOST_TEST(has_value(a) == false);
+
+	a = 42;
+
+	BOOST_TEST(a.has_value() == true);
+	BOOST_TEST(has_value(a) == true);
+
+	a.reset();
+
+	BOOST_TEST(a.has_value() == false);
+	BOOST_TEST(has_value(a) == false);
+}
+
 BOOST_AUTO_TEST_CASE(test_copy_ctr_empty)
 {
 	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
