@@ -222,7 +222,7 @@ namespace any
 
 		template<
 			typename T,
-			typename = std::enable_if_t<!detail::is_any<std::decay_t<T>>::value>
+			typename = std::enable_if_t<!std::is_same<std::decay_t<T>, base_any>::value>
 		>
 		base_any(T&& object)
 			: vtable(detail::function_table<std::decay_t<T>, Interfaces...>())
@@ -234,7 +234,7 @@ namespace any
 
 		template<
 			typename T,
-			typename = std::enable_if_t<!detail::is_any<std::decay_t<T>>::value>
+			typename = std::enable_if_t<!std::is_same<std::decay_t<T>, base_any>::value>
 		>
 		base_any& operator=(T&& object)
 		{

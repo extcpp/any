@@ -352,3 +352,27 @@ BOOST_AUTO_TEST_CASE(test_move_assign_empty)
 	BOOST_TEST(a.has_value() == false);
 	BOOST_TEST(b.has_value() == false);
 }
+
+BOOST_AUTO_TEST_CASE(test_any_in_any)
+{
+	using big_any_t = any::base_any<16, 8, any::iface::copy>;
+	using small_any_t = any::base_any<8, 8, any::iface::copy>;
+
+	big_any_t b;
+	small_any_t s;
+
+	s = 42;
+	BOOST_TEST(s.has_value() == true);
+	BOOST_TEST(any::valid_cast<int>(s) == true);
+	BOOST_TEST(b.has_value() == false);
+
+	b = s;
+	BOOST_TEST(b.has_value() == true);
+	BOOST_TEST(any::valid_cast<small_any_t>(b) == true);
+	decltype(auto) result = any::any_cast<small_any_t>(b);
+	static_assert(std::is_same_v<decltype(result), small_any_t&>);
+	BOOST_TEST(any::valid_cast<int>(result) == true);
+	decltype(auto) result2 = any::any_cast<int>(result);
+	static_assert(std::is_same_v<decltype(result2), int&>);
+	BOOST_TEST(result2 == 42);
+}
