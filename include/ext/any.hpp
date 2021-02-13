@@ -80,7 +80,7 @@ namespace ext
 
 			/// converts `data` into `T` and calls the given interface function with its `object` member
 			template<typename T, typename... Interfaces>
-			static Return invoke(char* data, Params... params)
+			static Return invoke_interface(char* data, Params... params)
 			{
 				return Interface::template invoke(*reinterpret_cast<T*>(data), std::forward<Params>(params)...);
 			}
@@ -94,7 +94,7 @@ namespace ext
 
 			/// converts `data` into `T const*` and calls the given interface function with its `object` member
 			template<typename T, typename... Interfaces>
-			static Return invoke(char const* data, Params... params)
+			static Return invoke_interface(char const* data, Params... params)
 			{
 				return Interface::template invoke(*reinterpret_cast<T const*>(data), std::forward<Params>(params)...);
 			}
@@ -107,7 +107,7 @@ namespace ext
 			using function_t = void(*)(char*);
 
 			template<typename T, typename... Interfaces>
-			static void invoke(char* data)
+			static void invoke_interface(char* data)
 			{
 				reinterpret_cast<T*>(data)->~T();
 			}
@@ -120,7 +120,7 @@ namespace ext
 			using function_t = void(*)(char const*, char*);
 
 			template<typename T, typename... Interfaces>
-			static void invoke(char const* data, char* target)
+			static void invoke_interface(char const* data, char* target)
 			{
 				new(target) T(*reinterpret_cast<T const*>(data));
 			}
@@ -133,7 +133,7 @@ namespace ext
 			using function_t = void(*)(char*, char*);
 
 			template<typename T, typename... Interfaces>
-			static void invoke(char* data, char* target)
+			static void invoke_interface(char* data, char* target)
 			{
 				new(target) T(std::move(*reinterpret_cast<T*>(data)));
 			}
@@ -162,7 +162,7 @@ namespace ext
 
 		/// function table instance for given T and interfaces
 		template<typename T, typename... Interfaces>
-		fn_table<iface::destroy, Interfaces...> const function_table(dispatch<iface::destroy>::invoke<T, Interfaces...>, dispatch<Interfaces>::template invoke<T, Interfaces...>...);
+		fn_table<iface::destroy, Interfaces...> const function_table(dispatch<iface::destroy>::invoke_interface<T, Interfaces...>, dispatch<Interfaces>::template invoke_interface<T, Interfaces...>...);
 
 		/// returns function table pointer for given T and interfaces
 		template<typename T, typename... Interfaces>
