@@ -1,38 +1,36 @@
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE test_any
-#include <boost/test/unit_test.hpp>
-#include "any/any.hpp"
+#include <gtest/gtest.h>
+#include <ext/any.hpp>
 
-BOOST_AUTO_TEST_CASE(test_is_any)
+TEST(is_any, static_assert)
 {
 	static_assert(!any::detail::is_any<int>::value);
 	static_assert( any::detail::is_any<any::base_any<16, 8>>::value);
 }
 
-BOOST_AUTO_TEST_CASE(test_any_int)
+TEST(types, int)
 {
 	using any_t = any::any<16, 8>;
 
 	any_t a = 42;
-	BOOST_TEST(any::valid_cast<int>(a) == true);
+	EXPECT_EQ(any::valid_cast<int>(a), true);
 
 	decltype(auto) result = any::any_cast<int>(a);
 	static_assert(std::is_same<decltype(result), int&>::value);
-	BOOST_TEST(result == 42);
+	EXPECT_EQ(result, 42);
 
 	result = 170;
-	BOOST_TEST(any::any_cast<int>(a) == 170);
+	EXPECT_EQ(any::any_cast<int>(a), 170);
 
 	any_t const& b = a;
-	BOOST_TEST(any::valid_cast<int>(b) == true);
-	BOOST_TEST(any::any_cast<int>(b) == 170);
+	EXPECT_EQ(any::valid_cast<int>(b), true);
+	EXPECT_EQ(any::any_cast<int>(b), 170);
 
 	decltype(auto) result2 = any::any_cast<int>(b);
 	static_assert(std::is_same<decltype(result2), int const&>::value);
-	BOOST_TEST(result2 == 170);
+	EXPECT_EQ(result2, 170);
 
-	result = 682;
-	BOOST_TEST(result2 == 682);
+    result = 682;
+	EXPECT_EQ(result2, 682);
 }
 
 struct dummy
@@ -57,7 +55,7 @@ unsigned dummy::move_assign = 0;
 unsigned dummy::dtor        = 0;
 
 
-BOOST_AUTO_TEST_CASE(test_any_copy_move)
+TEST(any_interface, copy_move)
 {
 	using any_t = any::base_any<16, 8, any::iface::copy, any::iface::move>;
 	{
@@ -69,13 +67,13 @@ BOOST_AUTO_TEST_CASE(test_any_copy_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		any_t a2 = a1;
-		BOOST_TEST(dummy::copy        == 1);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 0);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 0);
+		EXPECT_EQ(dummy::copy       , 1);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 0);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 0);
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 	{
 		dummy d{};
@@ -87,14 +85,14 @@ BOOST_AUTO_TEST_CASE(test_any_copy_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		a1 = a2;
-		BOOST_TEST(dummy::copy        == 1);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 0);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 1);
+		EXPECT_EQ(dummy::copy       , 1);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 0);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 1);
 		dummy::dtor = 0;
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 	{
 		any_t a1 = dummy{};
@@ -104,13 +102,13 @@ BOOST_AUTO_TEST_CASE(test_any_copy_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		any_t a2 = std::move(a1);
-		BOOST_TEST(dummy::copy        == 0);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 1);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 0);
+		EXPECT_EQ(dummy::copy       , 0);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 1);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 0);
 	}
-	BOOST_TEST(dummy::dtor == 2);
+	EXPECT_EQ(dummy::dtor, 2);
 
 	{
 		dummy d{};
@@ -122,18 +120,18 @@ BOOST_AUTO_TEST_CASE(test_any_copy_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		a1 = std::move(a2);
-		BOOST_TEST(dummy::copy        == 0);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 1);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 1);
+		EXPECT_EQ(dummy::copy       , 0);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 1);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 1);
 		dummy::dtor = 0;
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 }
 
-BOOST_AUTO_TEST_CASE(test_any_without_move)
+TEST(any_interface, without_move)
 {
 	using any_t = any::base_any<16, 8, any::iface::copy>;
 	{
@@ -145,13 +143,13 @@ BOOST_AUTO_TEST_CASE(test_any_without_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		any_t a2 = a1;
-		BOOST_TEST(dummy::copy        == 1);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 0);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 0);
+		EXPECT_EQ(dummy::copy       , 1);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 0);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 0);
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 	{
 		dummy d{};
@@ -163,14 +161,14 @@ BOOST_AUTO_TEST_CASE(test_any_without_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		a1 = a2;
-		BOOST_TEST(dummy::copy        == 1);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 0);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 1);
+		EXPECT_EQ(dummy::copy       , 1);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 0);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 1);
 		dummy::dtor = 0;
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 	{
 		any_t a1 = dummy{};
@@ -180,13 +178,13 @@ BOOST_AUTO_TEST_CASE(test_any_without_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		any_t a2 = std::move(a1);
-		BOOST_TEST(dummy::copy        == 1);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 0);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 0);
+		EXPECT_EQ(dummy::copy       , 1);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 0);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 0);
 	}
-	BOOST_TEST(dummy::dtor == 2);
+	EXPECT_EQ(dummy::dtor, 2);
 
 	{
 		dummy d{};
@@ -198,18 +196,18 @@ BOOST_AUTO_TEST_CASE(test_any_without_move)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		a1 = std::move(a2);
-		BOOST_TEST(dummy::copy        == 1);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 0);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 1);
+		EXPECT_EQ(dummy::copy       , 1);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 0);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 1);
 		dummy::dtor = 0;
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 }
 
-BOOST_AUTO_TEST_CASE(test_any_without_copy)
+TEST(any_interface, without_copy)
 {
 	using any_t = any::base_any<16, 8, any::iface::move>;
 	{
@@ -220,13 +218,13 @@ BOOST_AUTO_TEST_CASE(test_any_without_copy)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		any_t a2 = std::move(a1);
-		BOOST_TEST(dummy::copy        == 0);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 1);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 0);
+		EXPECT_EQ(dummy::copy       , 0);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 1);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 0);
 	}
-	BOOST_TEST(dummy::dtor == 2);
+	EXPECT_EQ(dummy::dtor, 2);
 
 	{
 		dummy d{};
@@ -238,14 +236,14 @@ BOOST_AUTO_TEST_CASE(test_any_without_copy)
 		dummy::move_assign = 0;
 		dummy::dtor        = 0;
 		a1 = std::move(a2);
-		BOOST_TEST(dummy::copy        == 0);
-		BOOST_TEST(dummy::copy_assign == 0);
-		BOOST_TEST(dummy::move        == 1);
-		BOOST_TEST(dummy::move_assign == 0);
-		BOOST_TEST(dummy::dtor        == 1);
+		EXPECT_EQ(dummy::copy       , 0);
+		EXPECT_EQ(dummy::copy_assign, 0);
+		EXPECT_EQ(dummy::move       , 1);
+		EXPECT_EQ(dummy::move_assign, 0);
+		EXPECT_EQ(dummy::dtor       , 1);
 		dummy::dtor = 0;
 	}
-	BOOST_TEST(dummy::dtor == 3);
+	EXPECT_EQ(dummy::dtor, 3);
 
 }
 
@@ -260,65 +258,65 @@ struct myinterface
 	}
 };
 
-BOOST_AUTO_TEST_CASE(test_any_custom_interface)
+TEST(any_interface, custom)
 {
 	using any_t = any::base_any<16, 8, any::iface::copy, any::iface::move, myinterface>;
 
 	any_t a = 42;
 	auto result = a.call<myinterface>(0.5);
-	BOOST_TEST(result == 42.5);
+	EXPECT_EQ(result, 42.5);
 	a = 41.5f;
 	result = a.call<myinterface>(0.5);
-	BOOST_TEST(result == 42.0);
+	EXPECT_EQ(result, 42.0);
 
 	result = any::call<myinterface>(a, 8.5);
-	BOOST_TEST(result == 50.0);
+	EXPECT_EQ(result, 50.0);
 }
 
-BOOST_AUTO_TEST_CASE(test_const_any_custom_interface)
+TEST(any_interface, const_custom_interface)
 {
 	using any_t = any::base_any<16, 8, any::iface::copy, any::iface::move, myinterface>;
 
 	const any_t a1 = 42;
 	auto result = a1.call<myinterface>(0.5);
-	BOOST_TEST(result == 42.5);
+	EXPECT_EQ(result, 42.5);
 
 	result = any::call<myinterface>(a1, 8.0);
-	BOOST_TEST(result == 50.0);
+	EXPECT_EQ(result, 50.0);
 }
 
-BOOST_AUTO_TEST_CASE(test_has_value)
+TEST(any_special_member_fn, test_has_value)
 {
 	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
 
 	any_t a;
 
-	BOOST_TEST(a.has_value() == false);
-	BOOST_TEST(has_value(a) == false);
+	EXPECT_EQ(a.has_value(), false);
+	EXPECT_EQ(has_value(a), false);
 
 	a = 42;
 
-	BOOST_TEST(a.has_value() == true);
-	BOOST_TEST(has_value(a) == true);
+	EXPECT_EQ(a.has_value(), true);
+	EXPECT_EQ(has_value(a), true);
 
 	a.reset();
 
-	BOOST_TEST(a.has_value() == false);
-	BOOST_TEST(has_value(a) == false);
+	EXPECT_EQ(a.has_value(), false);
+	EXPECT_EQ(has_value(a), false);
 }
 
-BOOST_AUTO_TEST_CASE(test_copy_ctr_empty)
+TEST(any_special_member_fn, copy_ctr_empty)
 {
 	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
 
 	any_t a;
 	any_t b(a);
 
-	BOOST_TEST(a.has_value() == false);
-	BOOST_TEST(b.has_value() == false);
+	EXPECT_EQ(a.has_value(), false);
+	EXPECT_EQ(b.has_value(), false);
 }
 
-BOOST_AUTO_TEST_CASE(test_copy_assign_empty)
+TEST(any_special_member_fn, copy_assign_empty)
 {
 	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
 
@@ -326,22 +324,22 @@ BOOST_AUTO_TEST_CASE(test_copy_assign_empty)
 	any_t b;
 	b = a;
 
-	BOOST_TEST(a.has_value() == false);
-	BOOST_TEST(b.has_value() == false);
+	EXPECT_EQ(a.has_value(), false);
+	EXPECT_EQ(b.has_value(), false);
 }
 
-BOOST_AUTO_TEST_CASE(test_move_ctr_empty)
+TEST(any_special_member_fn, move_ctr_empty)
 {
 	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
 
 	any_t a;
 	any_t b(std::move(a));
 
-	BOOST_TEST(a.has_value() == false);
-	BOOST_TEST(b.has_value() == false);
+	EXPECT_EQ(a.has_value(), false);
+	EXPECT_EQ(b.has_value(), false);
 }
 
-BOOST_AUTO_TEST_CASE(test_move_assign_empty)
+TEST(any_special_member_fn, move_assign_empty)
 {
 	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
 
@@ -349,11 +347,11 @@ BOOST_AUTO_TEST_CASE(test_move_assign_empty)
 	any_t b;
 	b = std::move(a);
 
-	BOOST_TEST(a.has_value() == false);
-	BOOST_TEST(b.has_value() == false);
+	EXPECT_EQ(a.has_value(), false);
+	EXPECT_EQ(b.has_value(), false);
 }
 
-BOOST_AUTO_TEST_CASE(test_any_in_any)
+TEST(any_special_member_fn, any_in_any)
 {
 	using big_any_t = any::base_any<16, 8, any::iface::copy>;
 	using small_any_t = any::base_any<8, 8, any::iface::copy>;
@@ -362,17 +360,17 @@ BOOST_AUTO_TEST_CASE(test_any_in_any)
 	small_any_t s;
 
 	s = 42;
-	BOOST_TEST(s.has_value() == true);
-	BOOST_TEST(any::valid_cast<int>(s) == true);
-	BOOST_TEST(b.has_value() == false);
+	EXPECT_EQ(s.has_value(), true);
+	EXPECT_EQ(any::valid_cast<int>(s), true);
+	EXPECT_EQ(b.has_value(), false);
 
 	b = s;
-	BOOST_TEST(b.has_value() == true);
-	BOOST_TEST(any::valid_cast<small_any_t>(b) == true);
+	EXPECT_EQ(b.has_value(), true);
+	EXPECT_EQ(any::valid_cast<small_any_t>(b), true);
 	decltype(auto) result = any::any_cast<small_any_t>(b);
 	static_assert(std::is_same_v<decltype(result), small_any_t&>);
-	BOOST_TEST(any::valid_cast<int>(result) == true);
+	EXPECT_EQ(any::valid_cast<int>(result), true);
 	decltype(auto) result2 = any::any_cast<int>(result);
 	static_assert(std::is_same_v<decltype(result2), int&>);
-	BOOST_TEST(result2 == 42);
+	EXPECT_EQ(result2, 42);
 }
