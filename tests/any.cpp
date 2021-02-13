@@ -3,8 +3,8 @@
 
 TEST(is_any, static_assert)
 {
-	static_assert(!ext::_any_detail::is_any<int>::value);
-	static_assert( ext::_any_detail::is_any<ext::base_any<16, 8>>::value);
+	static_assert(!ext::is_any<int>::value);
+	static_assert( ext::is_any<ext::base_any<16, 8>>::value);
 }
 
 TEST(types, int)

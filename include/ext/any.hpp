@@ -54,20 +54,19 @@ namespace ext
 	// forward declaration
 	template<std::size_t Size, std::size_t Alignment, typename... Interfaces> class base_any;
 
+	template<typename>
+	struct is_any : std::false_type
+	{ };
+
+	template<std::size_t Size, std::size_t Alignment, typename... Interfaces>
+	struct is_any<base_any<Size, Alignment, Interfaces...>> : std::true_type
+	{ };
+
+	template<class T>
+	inline constexpr bool is_any_v = is_any<T>::value;
+
 	namespace _any_detail
 	{
-		template<typename>
-		struct is_any
-		{
-			constexpr static bool value = false;
-		};
-
-		template<std::size_t Size, std::size_t Alignment, typename... Interfaces>
-		struct is_any<base_any<Size, Alignment, Interfaces...>>
-		{
-			constexpr static bool value = true;
-		};
-
 		/// interface function dispatcher
 		template<typename Interface, typename Signature>
 		struct dispatch_impl;
