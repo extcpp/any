@@ -1,12 +1,15 @@
 #ifndef EXT_ANY_HEADER
 #define EXT_ANY_HEADER
 
-#include <typeinfo>
-#include <utility>
-#include <cstdint>
 #include <cassert>
-#include <type_traits>
+#include <cstdint>
 #include <new>
+#include <type_traits>
+#include <utility>
+
+#ifndef EXT_NO_RTTI
+#include <typeinfo>
+#endif
 
 namespace ext
 {
@@ -14,8 +17,6 @@ namespace ext
 	{
 		struct placeholder
 		{ };
-
-		using _1 = placeholder;
 
 		/// destructor interface definition
 		/**
@@ -49,6 +50,15 @@ namespace ext
 		{
 			using signature_t = void(placeholder&, char*);
 		};
+
+#ifndef EXT_NO_RTTI
+		/// type information interface definition
+		struct type_info
+		{
+			using signature_t = std::type_info const& ();
+		};
+#endif
+
 	} // namespace iface
 
 	// forward declaration
@@ -67,6 +77,10 @@ namespace ext
 
 	namespace _any_detail
 	{
+
+		template<typename T>
+		using remove_cv_ref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
 		/// interface function dispatcher
 		template<typename Interface, typename Signature>
 		struct dispatch_impl;
@@ -138,6 +152,22 @@ namespace ext
 			}
 		};
 
+#ifndef EXT_NO_RTTI
+		/// interface function dispatcher for `iface::type_info`
+		template<>
+		struct dispatch_impl<iface::type_info, std::type_info const&()>
+		{
+			using function_t = std::type_info const& (*)();
+
+			template<typename T, typename... Interfaces>
+			static std::type_info const& invoke_interface()
+			{
+				return typeid(_any_detail::remove_cv_ref_t<T>);
+			}
+		};
+#endif
+
+
 		/// interface function dispatcher
 		template<typename Interface>
 		struct dispatch : dispatch_impl<Interface, typename Interface::signature_t>
@@ -154,18 +184,34 @@ namespace ext
 		template<typename... Interfaces>
 		struct fn_table : table_entry<Interfaces>...
 		{
-			fn_table(typename dispatch<Interfaces>::function_t... fn_ptrs)
+			constexpr fn_table(typename dispatch<Interfaces>::function_t... fn_ptrs)
 				: table_entry<Interfaces>{fn_ptrs}...
 			{ }
 		};
 
 		/// function table instance for given T and interfaces
 		template<typename T, typename... Interfaces>
-		fn_table<iface::destroy, Interfaces...> const function_table(dispatch<iface::destroy>::invoke_interface<T, Interfaces...>, dispatch<Interfaces>::template invoke_interface<T, Interfaces...>...);
+		fn_table<
+			iface::destroy,
+#ifndef EXT_NO_RTTI
+			iface::type_info,
+#endif
+			Interfaces...
+		> constexpr function_table{
+			dispatch<iface::destroy>::invoke_interface<T, Interfaces...>,
+#ifndef EXT_NO_RTTI
+			dispatch<iface::type_info>::invoke_interface<T, Interfaces...>,
+#endif
+			dispatch<Interfaces>::template invoke_interface<T, Interfaces...>...
+		};
 
 		/// returns function table pointer for given T and interfaces
 		template<typename T, typename... Interfaces>
-		fn_table<iface::destroy, Interfaces...> const*
+		fn_table<iface::destroy,
+#ifndef EXT_NO_RTTI
+			iface::type_info,
+#endif
+			Interfaces...> const*
 		get_function_table()
 		{
 			return &function_table<T, Interfaces...>;
@@ -184,7 +230,6 @@ namespace ext
 		{
 			return reinterpret_cast<std::uintptr_t>(get_function_table<T, Interfaces...>());
 		}
-
 	} // namespace _any_detail
 
 	/// any-object, which can carry any object satisfying all given interfaces
@@ -310,6 +355,7 @@ namespace ext
 					other.interface<iface::move>().function(other.data, data);
 				else if(std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value)
 					other.interface<iface::copy>().function(other.data, data); // fall back to copy construction
+
 			}
 			vtable = other.vtable;
 			return *this;
@@ -341,6 +387,16 @@ namespace ext
 			return vtable != nullptr;
 		}
 
+#ifndef EXT_NO_RTTI
+		auto type() const -> std::type_info const&
+		{
+			if(has_value())
+				return interface<iface::type_info>().function();
+			else
+				return typeid(void);
+		}
+#endif
+
 		/// destroys the inner object (has_value() returns false afterwards)
 		void reset()
 		{
@@ -364,7 +420,13 @@ namespace ext
 
 	private:
 		char data[size];
-		_any_detail::fn_table<iface::destroy, Interfaces...> const* vtable;
+		_any_detail::fn_table<
+			iface::destroy,
+#ifndef EXT_NO_RTTI
+			iface::type_info,
+#endif
+			Interfaces...
+		> const* vtable;
 	};
 
 	/// free-standing-function equivalent to base_any::has_value()
@@ -378,14 +440,22 @@ namespace ext
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...>& a)
 	{
-		return _any_detail::typeid_by_vtable(a.vtable) == _any_detail::typeid_by_type<T, Interfaces...>();
+		return _any_detail::typeid_by_vtable(a.vtable) == _any_detail::typeid_by_type<T, Interfaces...>()
+#ifndef EXT_NO_RTTI
+		       || a.type() == typeid(T)
+#endif
+		;
 	}
 
 	/// returns true if the given cast is valid
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...> const& a)
 	{
-		return _any_detail::typeid_by_vtable(a.vtable) == _any_detail::typeid_by_type<T, Interfaces...>();
+		return _any_detail::typeid_by_vtable(a.vtable) == _any_detail::typeid_by_type<T, Interfaces...>()
+#ifndef EXT_NO_RTTI
+		       || a.type() == typeid(T)
+#endif
+		;
 	}
 
 	/// returns a reference to the given type
