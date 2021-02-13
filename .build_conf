@@ -1,0 +1,4 @@
+#!/bin/bash
+export cmake_var_tests="${cmake_var_tests:-"-DEXTANY_TESTS=ON"}"
+export cmake_var_examples="${cmake_var_examples:-"-DEXTANY_EXAMPLES=ON"}"
+echo "ext-any - project_root: $project_root"

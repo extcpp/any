@@ -1,0 +1,161 @@
+# Copyright - 2019 - Jan Christoph Uhde <Jan@UhdeJC.com>
+
+## general travis
+# https://docs.travis-ci.com/user/environment-variables/
+# https://docs.travis-ci.com/user/reference/linux
+# https://docs.travis-ci.com/user/reference/windows
+# https://docs.travis-ci.com/user/reference/osx
+
+## packages
+# https://docs.travis-ci.com/user/installing-dependencies#Installing-Packages-with-the-APT-Addon
+# https://apt.llvm.org/
+
+os: linux
+dist: focal
+language: cpp
+sudo: required
+
+env:
+  global:
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - ARCH=amd64
+    - build_type=Release
+    - tests=ON
+    - examples=ON
+    - coverage=false
+
+matrix:
+  include:
+    - name: "default"
+      env:
+        - CXX=g++-9
+        - CC=gcc-9
+        - build_type=Debug
+      before_script:
+        - $project_root/support/travis/flake8
+
+    - name: "asan (mem & ub)"
+      if: branch = master
+      env:
+        - CXX=g++-9
+        - CC=gcc-9
+        - CXXFLAGS=" -fsanitize=address -fsanitize=undefined -fno-sanitize=alignment -fno-omit-frame-pointer -fno-sanitize=vptr -pthread "
+
+    - name: "coverage"
+      #if: branch =~ /master|coverage/
+      if: branch =~ /coverage/
+      env:
+        - CXX=g++-7
+        - CC=gcc-7
+        - CXXFLAGS="-O0 --coverage"
+        #build settings
+        - build_type=Debug
+        - examples=OFF
+        - coverage=true
+      addons:
+        apt:
+          #we need gcc7 for lcov to work
+          packages: ['gcc-7', 'g++-7', 'lcov']
+
+    - name: "clang"
+      env:
+        - CXX=clang++-10
+        - CC=clang-10
+      addons:
+        apt:
+          sources:
+            #- ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main'
+              key_url: "https://apt.llvm.org/llvm-snapshot.gpg.key"
+          packages: ['clang-10', 'clang++-10', 'clang-format-10', 'clang-tools-10', 'libc++-10-dev', 'libc++abi-10-dev']
+
+    - name: "mac"
+      os: osx
+      osx_image: xcode11.2
+      compiler: clang
+
+    - name: "coverity scan"
+      if: branch = coverity_scan
+      env:
+        - CXX=g++-7
+        - CC=gcc-7
+      addons:
+        apt:
+          #we need gcc7 for lcov to work
+          packages: ['gcc-7', 'g++-7', 'lcov']
+
+        coverity_scan:
+          project:
+            name: extcpp/basics
+            version: 0.1
+            description: ext::basics library
+          notification_email: linux@obiwahn.org
+          #build_command_prepend: |
+          #                       export ${CXX}
+          #                       export ${CC}
+          #                       export ${CXXFLAGS}
+          #                       cov-configure --comptype gcc --compiler /usr/bin/g++-7 -- -std=gnu++1z
+          #                       cmake -DCMAKE_BUILD_TYPE=Debug -DEXTANY_TESTS=ON -DEXTANY_EXAMPLES=ON .
+          #build_command: "cmake --build . --config Debug"
+          build_command_prepend: |
+                                 cov-configure --comptype g++ --compiler /usr/bin/g++-7 -- -std=gnu++1z
+                                 cmake -DCMAKE_BUILD_TYPE=Debug -DEXTANY_TESTS=ON -DEXTANY_EXAMPLES=ON .
+          build_command: "cmake --build . --config Debug"
+          branch_pattern: coverity_scan
+      before_script:
+        # fix for coverity scans
+        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
+        - sudo curl -s -L https://entrust.com/root-certificates/entrust_l1k.cer -o /usr/local/share/ca-certificates/entrust_l1k.crt
+        - sudo update-ca-certificates
+      script:
+        - echo 'no build required ... done'
+        # debug covertiy scan
+        - cat cov-int/build-log.txt
+        - cat cov-int/scm_log.txt
+
+before_install:
+  # for some reason CXX and CC can not be set in env
+  - export CXX=${CXX:-g++}
+  - export CC=${CC:-gcc}
+  - export CXXFLAGS=${CXXFLAGS:-""}
+  # set defaults
+  - if ${verbose:-false}; then export VERBOSE=1; fi
+  - export ARCH=${ARCH:-amd64}
+  - export EXT_CI=true
+  - export EXT_CI_BRANCH=${TRAVIS_BRANCH}
+  # calculate pojects paths
+  - export PATH="$install_root/bin:$PATH"
+  - export project_root="$PWD"
+  - export build_base="${project_root}-build"
+  - export build_root="${build_base}/$build_type"
+  - export install_root="$HOME/usr"
+  - export build_prefix='<>'
+
+install:
+  - echo $project_root
+  - git clone https://github.com/extcpp/build-support --recurse-submodules ../build-support
+  - ../build-support/setup-support . ../build-support
+  # system info
+  - ../build-support/lib/bash_build_scripts/system_info
+  - ../build-support/lib/bash_build_scripts/var_info
+  - mkdir "$install_root"
+  - mkdir -p "$build_root"
+  - ln -s "$build_root" "$build_base/current"
+  - sudo $project_root/support/travis/install-$ARCH-$TRAVIS_OS_NAME
+  - ../build-support/lib/bash_build_scripts/install_cmake
+  - ../build-support/lib/bash_build_scripts/install_3rd_party
+
+before_script:
+
+script:
+  - ../build-support/lib/bash_build_scripts/var_info
+  - |
+    ../build-support/lib/bash_build_scripts/configure \
+      -DCMAKE_BUILD_TYPE="$build_type" \
+      -DEXTANY_TESTS="$tests" \
+      -DEXTANY_EXAMPLES="$examples" \
+      $cmake_extra_flags
+  - ../build-support/lib/bash_build_scripts/build
+  - if [[ $coverage == "false" ]]; then ../build-support/lib/bash_build_scripts/test $tests; fi
+  - if [[ $coverage == "true" ]]; then ../build-support/scripts/coverage; fi
