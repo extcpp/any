@@ -1,5 +1,5 @@
-#ifndef INCLGUARD_any_hpp
-#define INCLGUARD_any_hpp
+#ifndef EXT_ANY_HEADER
+#define EXT_ANY_HEADER
 
 #include <typeinfo>
 #include <utility>
@@ -8,7 +8,7 @@
 #include <type_traits>
 #include <new>
 
-namespace any
+namespace ext
 {
 	namespace iface
 	{
@@ -54,7 +54,7 @@ namespace any
 	// forward declaration
 	template<std::size_t Size, std::size_t Alignment, typename... Interfaces> class base_any;
 
-	namespace detail
+	namespace _any_detail
 	{
 		template<typename>
 		struct is_any
@@ -186,7 +186,7 @@ namespace any
 			return reinterpret_cast<std::uintptr_t>(function_table<T, Interfaces...>());
 		}
 
-	} // namespace detail
+	} // namespace _any_detail
 
 	/// any-object, which can carry any object satisfying all given interfaces
 	/**
@@ -226,7 +226,7 @@ namespace any
 			typename = std::enable_if_t<!std::is_same<std::decay_t<T>, base_any>::value>
 		>
 		base_any(T&& object)
-			: vtable(detail::function_table<std::decay_t<T>, Interfaces...>())
+			: vtable(_any_detail::function_table<std::decay_t<T>, Interfaces...>())
 		{
 			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
 			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
@@ -242,7 +242,7 @@ namespace any
 			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
 			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
 			destroy();
-			vtable = detail::function_table<std::decay_t<T>, Interfaces...>();
+			vtable = _any_detail::function_table<std::decay_t<T>, Interfaces...>();
 			new(data) std::decay_t<T>(std::forward<T>(object));
 			return *this;
 		}
@@ -250,7 +250,7 @@ namespace any
 		base_any(base_any const& other)
 			: vtable(other.vtable)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value,
 				"this any-object has no interface for copy construction");
 
 			assert(this != &other && "ill formed initialization");
@@ -262,16 +262,16 @@ namespace any
 			: vtable(other.vtable)
 		{
 			static_assert(
-				std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value
-				|| std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
+				std::is_base_of<_any_detail::table_entry<iface::move>, _any_detail::fn_table<Interfaces...>>::value
+				|| std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value,
 				"this any-object has neither an interface for move construction nor an interface for copy construction");
 
 			if(other.has_value())
 			{
 				assert(this != &other && "ill formed initialization");
-				if constexpr(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value)
+				if constexpr(std::is_base_of<_any_detail::table_entry<iface::move>, _any_detail::fn_table<Interfaces...>>::value)
 					other.interface<iface::move>().function(other.data, data);
-				else if(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value)
+				else if(std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value)
 					other.interface<iface::copy>().function(other.data, data); // fall back to copy construction
 			}
 			else
@@ -280,7 +280,7 @@ namespace any
 
 		base_any& operator= (base_any const& other)
 		{
-			static_assert(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value,
 				"this any-object has no interface for copy construction");
 
 			if(this == &other)
@@ -296,8 +296,8 @@ namespace any
 		base_any& operator= (base_any&& other)
 		{
 			static_assert(
-				std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value
-				|| std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value,
+				std::is_base_of<_any_detail::table_entry<iface::move>, _any_detail::fn_table<Interfaces...>>::value
+				|| std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value,
 				"this any-object has neither an interface for move construction nor an interface for copy construction");
 
 			if(this == &other)
@@ -306,9 +306,9 @@ namespace any
 			destroy();
 			if(other.has_value())
 			{
-				if constexpr(std::is_base_of<detail::table_entry<iface::move>, detail::fn_table<Interfaces...>>::value)
+				if constexpr(std::is_base_of<_any_detail::table_entry<iface::move>, _any_detail::fn_table<Interfaces...>>::value)
 					other.interface<iface::move>().function(other.data, data);
-				else if(std::is_base_of<detail::table_entry<iface::copy>, detail::fn_table<Interfaces...>>::value)
+				else if(std::is_base_of<_any_detail::table_entry<iface::copy>, _any_detail::fn_table<Interfaces...>>::value)
 					other.interface<iface::copy>().function(other.data, data); // fall back to copy construction
 			}
 			vtable = other.vtable;
@@ -319,7 +319,7 @@ namespace any
 		template<typename Interface, typename... Args>
 		decltype(auto) call(Args&&... args)
 		{
-			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<_any_detail::table_entry<Interface>, _any_detail::fn_table<Interfaces...>>::value,
 				"this any-object does not support given interface");
 
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
@@ -329,7 +329,7 @@ namespace any
 		template<typename Interface, typename... Args>
 		decltype(auto) call(Args&&... args) const
 		{
-			static_assert(std::is_base_of<detail::table_entry<Interface>, detail::fn_table<Interfaces...>>::value,
+			static_assert(std::is_base_of<_any_detail::table_entry<Interface>, _any_detail::fn_table<Interfaces...>>::value,
 				"this any-object does not support given interface");
 
 			return interface<Interface>().function(data, std::forward<Args>(args)...);
@@ -353,7 +353,7 @@ namespace any
 		decltype(auto) interface() const
 		{
 			assert(has_value());
-			return *static_cast<detail::table_entry<Interface> const*>(vtable);
+			return *static_cast<_any_detail::table_entry<Interface> const*>(vtable);
 		}
 
 		void destroy()
@@ -364,7 +364,7 @@ namespace any
 
 	private:
 		char data[size];
-		detail::fn_table<iface::destroy, Interfaces...> const* vtable;
+		_any_detail::fn_table<iface::destroy, Interfaces...> const* vtable;
 	};
 
 	/// free-standing-function equivalent to base_any::has_value()
@@ -378,14 +378,14 @@ namespace any
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...>& a)
 	{
-		return detail::typeid_by_vtable(a.vtable) == detail::typeid_by_type<T, Interfaces...>();
+		return _any_detail::typeid_by_vtable(a.vtable) == _any_detail::typeid_by_type<T, Interfaces...>();
 	}
 
 	/// returns true if the given cast is valid
 	template<typename T, std::size_t Size, std::size_t Alignment, typename... Interfaces>
 	bool valid_cast(base_any<Size, Alignment, Interfaces...> const& a)
 	{
-		return detail::typeid_by_vtable(a.vtable) == detail::typeid_by_type<T, Interfaces...>();
+		return _any_detail::typeid_by_vtable(a.vtable) == _any_detail::typeid_by_type<T, Interfaces...>();
 	}
 
 	/// returns a reference to the given type
@@ -438,4 +438,4 @@ namespace any
 	using any = base_any<Size, Alignment, iface::copy>;
 } // namespace any
 
-#endif
+#endif // EXT_ANY_HEADER

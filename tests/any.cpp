@@ -3,29 +3,29 @@
 
 TEST(is_any, static_assert)
 {
-	static_assert(!any::detail::is_any<int>::value);
-	static_assert( any::detail::is_any<any::base_any<16, 8>>::value);
+	static_assert(!ext::_any_detail::is_any<int>::value);
+	static_assert( ext::_any_detail::is_any<ext::base_any<16, 8>>::value);
 }
 
 TEST(types, int)
 {
-	using any_t = any::any<16, 8>;
+	using any_t = ext::any<16, 8>;
 
 	any_t a = 42;
-	EXPECT_EQ(any::valid_cast<int>(a), true);
+	EXPECT_EQ(ext::valid_cast<int>(a), true);
 
-	decltype(auto) result = any::any_cast<int>(a);
+	decltype(auto) result = ext::any_cast<int>(a);
 	static_assert(std::is_same<decltype(result), int&>::value);
 	EXPECT_EQ(result, 42);
 
 	result = 170;
-	EXPECT_EQ(any::any_cast<int>(a), 170);
+	EXPECT_EQ(ext::any_cast<int>(a), 170);
 
 	any_t const& b = a;
-	EXPECT_EQ(any::valid_cast<int>(b), true);
-	EXPECT_EQ(any::any_cast<int>(b), 170);
+	EXPECT_EQ(ext::valid_cast<int>(b), true);
+	EXPECT_EQ(ext::any_cast<int>(b), 170);
 
-	decltype(auto) result2 = any::any_cast<int>(b);
+	decltype(auto) result2 = ext::any_cast<int>(b);
 	static_assert(std::is_same<decltype(result2), int const&>::value);
 	EXPECT_EQ(result2, 170);
 
@@ -57,7 +57,7 @@ unsigned dummy::dtor        = 0;
 
 TEST(any_interface, copy_move)
 {
-	using any_t = any::base_any<16, 8, any::iface::copy, any::iface::move>;
+	using any_t = ext::base_any<16, 8, ext::iface::copy, ext::iface::move>;
 	{
 		dummy d{};
 		any_t a1 = d;
@@ -133,7 +133,7 @@ TEST(any_interface, copy_move)
 
 TEST(any_interface, without_move)
 {
-	using any_t = any::base_any<16, 8, any::iface::copy>;
+	using any_t = ext::base_any<16, 8, ext::iface::copy>;
 	{
 		dummy d{};
 		any_t a1 = d;
@@ -209,7 +209,7 @@ TEST(any_interface, without_move)
 
 TEST(any_interface, without_copy)
 {
-	using any_t = any::base_any<16, 8, any::iface::move>;
+	using any_t = ext::base_any<16, 8, ext::iface::move>;
 	{
 		any_t a1 = dummy{};
 		dummy::copy        = 0;
@@ -249,7 +249,7 @@ TEST(any_interface, without_copy)
 
 struct myinterface
 {
-	using signature_t = double(any::iface::placeholder const&, double);
+	using signature_t = double(ext::iface::placeholder const&, double);
 
 	template<typename T>
 	static double invoke(T const& object, double number)
@@ -260,7 +260,7 @@ struct myinterface
 
 TEST(any_interface, custom)
 {
-	using any_t = any::base_any<16, 8, any::iface::copy, any::iface::move, myinterface>;
+	using any_t = ext::base_any<16, 8, ext::iface::copy, ext::iface::move, myinterface>;
 
 	any_t a = 42;
 	auto result = a.call<myinterface>(0.5);
@@ -269,25 +269,25 @@ TEST(any_interface, custom)
 	result = a.call<myinterface>(0.5);
 	EXPECT_EQ(result, 42.0);
 
-	result = any::call<myinterface>(a, 8.5);
+	result = ext::call<myinterface>(a, 8.5);
 	EXPECT_EQ(result, 50.0);
 }
 
 TEST(any_interface, const_custom_interface)
 {
-	using any_t = any::base_any<16, 8, any::iface::copy, any::iface::move, myinterface>;
+	using any_t = ext::base_any<16, 8, ext::iface::copy, ext::iface::move, myinterface>;
 
 	const any_t a1 = 42;
 	auto result = a1.call<myinterface>(0.5);
 	EXPECT_EQ(result, 42.5);
 
-	result = any::call<myinterface>(a1, 8.0);
+	result = ext::call<myinterface>(a1, 8.0);
 	EXPECT_EQ(result, 50.0);
 }
 
 TEST(any_special_member_fn, test_has_value)
 {
-	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+	using any_t = ext::base_any<16, 8, ext::iface::move, ext::iface::copy>;
 
 	any_t a;
 
@@ -307,7 +307,7 @@ TEST(any_special_member_fn, test_has_value)
 
 TEST(any_special_member_fn, copy_ctr_empty)
 {
-	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+	using any_t = ext::base_any<16, 8, ext::iface::move, ext::iface::copy>;
 
 	any_t a;
 	any_t b(a);
@@ -318,7 +318,7 @@ TEST(any_special_member_fn, copy_ctr_empty)
 
 TEST(any_special_member_fn, copy_assign_empty)
 {
-	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+	using any_t = ext::base_any<16, 8, ext::iface::move, ext::iface::copy>;
 
 	any_t a;
 	any_t b;
@@ -330,7 +330,7 @@ TEST(any_special_member_fn, copy_assign_empty)
 
 TEST(any_special_member_fn, move_ctr_empty)
 {
-	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+	using any_t = ext::base_any<16, 8, ext::iface::move, ext::iface::copy>;
 
 	any_t a;
 	any_t b(std::move(a));
@@ -341,7 +341,7 @@ TEST(any_special_member_fn, move_ctr_empty)
 
 TEST(any_special_member_fn, move_assign_empty)
 {
-	using any_t = any::base_any<16, 8, any::iface::move, any::iface::copy>;
+	using any_t = ext::base_any<16, 8, ext::iface::move, ext::iface::copy>;
 
 	any_t a;
 	any_t b;
@@ -353,24 +353,24 @@ TEST(any_special_member_fn, move_assign_empty)
 
 TEST(any_special_member_fn, any_in_any)
 {
-	using big_any_t = any::base_any<16, 8, any::iface::copy>;
-	using small_any_t = any::base_any<8, 8, any::iface::copy>;
+	using big_any_t = ext::base_any<16, 8, ext::iface::copy>;
+	using small_any_t = ext::base_any<8, 8, ext::iface::copy>;
 
 	big_any_t b;
 	small_any_t s;
 
 	s = 42;
 	EXPECT_EQ(s.has_value(), true);
-	EXPECT_EQ(any::valid_cast<int>(s), true);
+	EXPECT_EQ(ext::valid_cast<int>(s), true);
 	EXPECT_EQ(b.has_value(), false);
 
 	b = s;
 	EXPECT_EQ(b.has_value(), true);
-	EXPECT_EQ(any::valid_cast<small_any_t>(b), true);
-	decltype(auto) result = any::any_cast<small_any_t>(b);
+	EXPECT_EQ(ext::valid_cast<small_any_t>(b), true);
+	decltype(auto) result = ext::any_cast<small_any_t>(b);
 	static_assert(std::is_same_v<decltype(result), small_any_t&>);
-	EXPECT_EQ(any::valid_cast<int>(result), true);
-	decltype(auto) result2 = any::any_cast<int>(result);
+	EXPECT_EQ(ext::valid_cast<int>(result), true);
+	decltype(auto) result2 = ext::any_cast<int>(result);
 	static_assert(std::is_same_v<decltype(result2), int&>);
 	EXPECT_EQ(result2, 42);
 }
