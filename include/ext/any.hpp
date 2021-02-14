@@ -92,7 +92,7 @@ namespace ext
 			using function_t = Return(*)(char*, Params...);
 
 			/// converts `data` into `T` and calls the given interface function with its `object` member
-			template<typename T, typename... Interfaces>
+			template<typename T>
 			static Return invoke_interface(char* data, Params... params)
 			{
 				return Interface::template invoke(*reinterpret_cast<T*>(data), std::forward<Params>(params)...);
@@ -106,7 +106,7 @@ namespace ext
 			using function_t = Return(*)(char const*, Params...);
 
 			/// converts `data` into `T const*` and calls the given interface function with its `object` member
-			template<typename T, typename... Interfaces>
+			template<typename T>
 			static Return invoke_interface(char const* data, Params... params)
 			{
 				return Interface::template invoke(*reinterpret_cast<T const*>(data), std::forward<Params>(params)...);
@@ -119,7 +119,7 @@ namespace ext
 		{
 			using function_t = void(*)(char*);
 
-			template<typename T, typename... Interfaces>
+			template<typename T>
 			static void invoke_interface(char* data)
 			{
 				reinterpret_cast<T*>(data)->~T();
@@ -132,7 +132,7 @@ namespace ext
 		{
 			using function_t = void(*)(char const*, char*);
 
-			template<typename T, typename... Interfaces>
+			template<typename T>
 			static void invoke_interface(char const* data, char* target)
 			{
 				new(target) T(*reinterpret_cast<T const*>(data));
@@ -145,7 +145,7 @@ namespace ext
 		{
 			using function_t = void(*)(char*, char*);
 
-			template<typename T, typename... Interfaces>
+			template<typename T>
 			static void invoke_interface(char* data, char* target)
 			{
 				new(target) T(std::move(*reinterpret_cast<T*>(data)));
@@ -159,7 +159,7 @@ namespace ext
 		{
 			using function_t = std::type_info const& (*)();
 
-			template<typename T, typename... Interfaces>
+			template<typename T>
 			static std::type_info const& invoke_interface()
 			{
 				return typeid(_any_detail::remove_cv_ref_t<T>);
@@ -198,11 +198,11 @@ namespace ext
 #endif
 			Interfaces...
 		> constexpr function_table{
-			dispatch<iface::destroy>::invoke_interface<T, Interfaces...>,
+			dispatch<iface::destroy>::invoke_interface<T>,
 #ifndef EXT_NO_RTTI
-			dispatch<iface::type_info>::invoke_interface<T, Interfaces...>,
+			dispatch<iface::type_info>::invoke_interface<T>,
 #endif
-			dispatch<Interfaces>::template invoke_interface<T, Interfaces...>...
+			dispatch<Interfaces>::template invoke_interface<T>...
 		};
 
 		/// returns function table pointer for given T and interfaces
