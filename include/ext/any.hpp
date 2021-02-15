@@ -205,18 +205,6 @@ namespace ext
 			dispatch<Interfaces>::template invoke_interface<T>...
 		};
 
-		/// returns function table pointer for given T and interfaces
-		template<typename T, typename... Interfaces>
-		fn_table<iface::destroy,
-#ifndef EXT_NO_RTTI
-			iface::type_info,
-#endif
-			Interfaces...> const*
-		get_function_table()
-		{
-			return &function_table<T, Interfaces...>;
-		}
-
 		/// returns a unique integer, identifying the type and its interfaces associated with given vtable
 		template<typename Ptr>
 		std::uintptr_t typeid_by_vtable(Ptr* vtable_ptr)
@@ -228,7 +216,7 @@ namespace ext
 		template<typename T, typename... Interfaces>
 		std::uintptr_t typeid_by_type()
 		{
-			return reinterpret_cast<std::uintptr_t>(get_function_table<T, Interfaces...>());
+			return reinterpret_cast<std::uintptr_t>(&function_table<T, Interfaces...>);
 		}
 	} // namespace _any_detail
 
@@ -270,8 +258,7 @@ namespace ext
 			typename = std::enable_if_t<!std::is_same<std::decay_t<T>, base_any>::value>
 		>
 		base_any(T&& object)
-
-			: vtable(_any_detail::get_function_table<std::decay_t<T>, Interfaces...>())
+			: vtable(&_any_detail::function_table<std::decay_t<T>, Interfaces...>)
 		{
 			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
 			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
@@ -287,7 +274,7 @@ namespace ext
 			static_assert(sizeof(std::decay_t<T>) <= size, "given object does not fit into this any-object");
 			static_assert(alignof(std::decay_t<T>) <= alignment, "given object requires a stricter alignment");
 			destroy();
-			vtable = _any_detail::get_function_table<std::decay_t<T>, Interfaces...>();
+			vtable = &_any_detail::function_table<std::decay_t<T>, Interfaces...>;
 			new(data) std::decay_t<T>(std::forward<T>(object));
 			return *this;
 		}
