@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cassert>
 #include <type_traits>
+#include <new>
 
 namespace any
 {
@@ -199,17 +200,17 @@ namespace any
 		constexpr static std::size_t size = Size;
 		constexpr static std::size_t alignment = Alignment;
 
-		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
-		friend _T& any_cast(base_any<_Size, _Alignment, _Interfaces...>& a);
+		template<typename OtherType, std::size_t OtherSize, std::size_t OtherAlignment, typename... OtherInterface>
+		friend OtherType& any_cast(base_any<OtherSize, OtherAlignment, OtherInterface...>& a);
 
-		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
-		friend _T const& any_cast(base_any<_Size, _Alignment, _Interfaces...> const& a);
+		template<typename OtherType, std::size_t OtherSize, std::size_t OtherAlignment, typename... OtherInterface>
+		friend OtherType const& any_cast(base_any<OtherSize, OtherAlignment, OtherInterface...> const& a);
 
-		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
-		friend bool valid_cast(base_any<_Size, _Alignment, _Interfaces...>& a);
+		template<typename OtherType, std::size_t OtherSize, std::size_t OtherAlignment, typename... OtherInterface>
+		friend bool valid_cast(base_any<OtherSize, OtherAlignment, OtherInterface...>& a);
 
-		template<typename _T, std::size_t _Size, std::size_t _Alignment, typename... _Interfaces>
-		friend bool valid_cast(base_any<_Size, _Alignment, _Interfaces...> const& a);
+		template<typename OtherType, std::size_t OtherSize, std::size_t OtherAlignment, typename... OtherInterface>
+		friend bool valid_cast(base_any<OtherSize, OtherAlignment, OtherInterface...> const& a);
 
 		~base_any()
 		{
