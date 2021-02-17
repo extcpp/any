@@ -3,8 +3,8 @@
 
 TEST(is_any, static_assert)
 {
-	static_assert(!ext::_any_detail::is_any<int>::value);
-	static_assert( ext::_any_detail::is_any<ext::base_any<16, 8>>::value);
+	static_assert(!ext::is_any<int>::value);
+	static_assert( ext::is_any<ext::base_any<16, 8>>::value);
 }
 
 TEST(types, int)
@@ -251,10 +251,10 @@ struct myinterface
 {
 	using signature_t = double(ext::iface::placeholder const&, double);
 
-	template<typename T>
-	static double invoke(T const& object, double number)
+	template<typename T, typename Num>
+	static Num invoke(T const& object, Num number)
 	{
-		return object + number;
+		return static_cast<Num>(object) + number;
 	}
 };
 
@@ -265,6 +265,7 @@ TEST(any_interface, custom)
 	any_t a = 42;
 	auto result = a.call<myinterface>(0.5);
 	EXPECT_EQ(result, 42.5);
+
 	a = 41.5f;
 	result = a.call<myinterface>(0.5);
 	EXPECT_EQ(result, 42.0);
