@@ -9,7 +9,7 @@ option(EXTANY_WARNINGS "enable warnings" ON)
 option(EXTANY_CHECKED "user assert" ON)
 option(EXTANY_TESTS "build tests" OFF)
 option(EXTANY_EXAMPLES "build examples" OFF)
-option(EXTANY_NO_RTTI  "build without runtime type information support" ON)
+option(EXTANY_NO_RTTI  "build without runtime type information support" OFF)
 
 # enable extcpp cmake
 include(${CMAKE_CURRENT_LIST_DIR}/ext_cmake_enable.cmake)
